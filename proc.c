@@ -329,6 +329,7 @@ void
 scheduler(void)
 {
   struct proc *p;
+  struct proc *high_p;
   struct cpu *c = mycpu();
   c->proc = 0;
   
@@ -338,13 +339,21 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    high_p = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
 
+      if(high_p == 0 || p->priority < high_p->priority) {
+        high_p = p;
+      }
+    }
+
+    if(high_p != 0) {
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+      p = high_p;
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -357,7 +366,6 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 

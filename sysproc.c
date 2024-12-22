@@ -102,3 +102,10 @@ sys_setpriority(void)
 
   return setpriority(priority);
 }
+
+// yield the CPU
+int sys_sched_yield(void)
+{
+  yield();
+  return 0;
+}
