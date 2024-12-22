@@ -124,7 +124,10 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
+
+  // Set priority to default value
+  p->priority = PRIO_DEFAULT;
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -199,6 +202,9 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+
+  // Inherit priority from parent
+  np->priority = curproc->priority;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -531,4 +537,33 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+
+
+// set the priority of the current process
+int setpriority(int priority) {
+  int new_priority;
+  int old_priority;
+
+  // Fetch the new priority argument
+  if(argint(0, &new_priority) < 0 || new_priority < PRIO_MIN || new_priority > PRIO_MAX) {
+    return -1; // Invalid priority range
+  }
+
+  // Lock the process table to safely modify the current process's priority
+  acquire(&ptable.lock);
+
+  old_priority = myproc()->priority;  // Get the old priority
+  myproc()->priority = new_priority;  // Set the new priority
+
+  // Release the lock on the process table
+  release(&ptable.lock);
+
+  // If the new priority is lower (meaning higher priority), yield the CPU
+  if (new_priority > old_priority) {
+    yield(); // Give up the CPU voluntarily
+  }
+
+  return old_priority;  // Return the old priority
 }

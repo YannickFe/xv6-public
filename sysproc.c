@@ -89,3 +89,16 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// set the priority of the current process
+int
+sys_setpriority(void)
+{
+  int priority;
+
+  // Fetch the new priority argument
+  if(argint(0, &priority) < 0)
+    return -1;
+
+  return setpriority(priority);
+}

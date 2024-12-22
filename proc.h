@@ -49,7 +49,11 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  int priority;         // Process priority, 0 is highest, 99 is lowest
 };
+#define PRIO_MIN 0
+#define PRIO_MAX 99
+#define PRIO_DEFAULT 50
 
 // Process memory is laid out contiguously, low addresses first:
 //   text
