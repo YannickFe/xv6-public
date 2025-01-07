@@ -331,6 +331,7 @@ scheduler(void)
   struct proc *p;
   struct proc *high_p;
   struct cpu *c = mycpu();
+  static int last_scheduled_index = 0;
   c->proc = 0;
   
   for(;;){
@@ -340,12 +341,22 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     high_p = 0;
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    int start_index = (last_scheduled_index + 1) % NPROC;
+    int found_index = -1;
+
+    // Traverse process table starting from last_scheduled_index
+    for(int i = 0; i < NPROC; i++) {
+      int index = (start_index + i) % NPROC;
+      p = &ptable.proc[index];
+
       if(p->state != RUNNABLE)
         continue;
 
-      if(high_p == 0 || p->priority < high_p->priority) {
+      // Choose the process with the highest priority
+      if(high_p == 0 || p->priority < high_p->priority ||
+         (p->priority == high_p->priority && found_index == -1)) {
         high_p = p;
+        found_index = index;
       }
     }
 
@@ -353,12 +364,14 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      p = high_p;
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
+      // Update last scheduled process index
+      last_scheduled_index = found_index;
+      c->proc = high_p;
+      switchuvm(high_p);
+      high_p->state = RUNNING;
+
+      swtch(&(c->scheduler), high_p->context);
       switchkvm();
 
       // Process is done running for now.
